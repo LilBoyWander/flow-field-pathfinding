@@ -1,0 +1,20 @@
+{
+  "name": "flow-field-pathfinding-case-study",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Interactive comparison of shared flow fields and independent A* pathfinding for large RTS-style crowds.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "check": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "typescript": "~6.0.2",
+    "vite": "^8.0.12"
+  }
+}

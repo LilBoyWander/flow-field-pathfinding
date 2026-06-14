@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flow Field v4 • Advanced Effects</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', system_ui, sans-serif; overflow-x: hidden; }
+        .font-display { font-family: 'Space Grotesk', 'Inter', sans-serif; font-weight: 600; }
+        .canvas-wrapper {
+            width: 100%; max-width: 960px; margin: 0 auto; position: relative;
+            border-radius: 1rem; overflow: hidden; box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+            border: 1px solid #334155; background: #0f172a;
+        }
+        canvas { display: block; image-rendering: crisp-edges; }
+        .demo-container { max-width: 1480px; margin: 0 auto; padding: 1.5rem; }
+        .tool-btn { transition: all 0.1s ease; }
+        .tool-btn.active { background-color: #166534; border-color: #4ade80; color: white; }
+        .inspector-panel { background: #0f172a; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-200">
+    <div class="demo-container">
+        <div class="flex items-center justify-between mb-6">
+            <div class="flex items-center gap-x-4">
+                <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-600 flex items-center justify-center">
+                    <i class="fa-solid fa-magic text-white text-3xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-display text-4xl tracking-tighter font-semibold">Flow Field <span class="text-emerald-400">v4</span></h1>
+                    <p class="text-slate-400 text-sm -mt-1">Advanced customizable effects &amp; inspector</p>
+                </div>
+            </div>
+            <div class="flex gap-x-2">
+                <button onclick="generateField()" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-3xl text-sm font-semibold flex items-center gap-x-2">
+                    <i class="fa-solid fa-sync"></i> <span>Regenerate</span>
+                </button>
+                <button onclick="clearAll()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-3xl text-sm">Clear</button>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 xl:grid-cols-12 gap-6">
+            
+            <!-- Canvas -->
+            <div class="xl:col-span-7 min-w-0">
+                <div class="flex items-center justify-between mb-2 px-1">
+                    <div>
+                        <span class="font-semibold">Tool:</span> 
+                        <span id="current-tool" class="font-mono text-emerald-400 font-semibold">Wall</span>
+                    </div>
+                    <div class="flex items-center gap-x-3 text-xs">
+                        <div>Brush <span id="brush-value" class="font-mono">2</span></div>
+                        <input type="range" id="brush-slider" class="w-20 accent-emerald-500" min="1" max="5" value="2">
+                    </div>
+                </div>
+
+                <div class="canvas-wrapper">
+                    <canvas id="canvas" width="960" height="640"></canvas>
+                </div>
+                
+                <div class="mt-2 text-xs text-slate-500 px-1">
+                    <span class="font-semibold text-emerald-400">Left Drag</span> paint • 
+                    <span class="font-semibold text-emerald-400">Right Click</span> set goal • 
+                    <span class="font-semibold text-emerald-400">Click effect</span> edit in inspector
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="xl:col-span-5 min-w-0 space-y-5">
+                
+                <!-- Tools -->
+                <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5">
+                    <div class="font-semibold mb-3">Obstacle Tools</div>
+                    <div class="grid grid-cols-3 gap-2 text-sm">
+                        <button onclick="selectTool('wall')" id="tool-wall" class="tool-btn active px-3 py-2 rounded-2xl border border-slate-700">Wall</button>
+                        <button onclick="selectTool('gravity')" id="tool-gravity" class="tool-btn px-3 py-2 rounded-2xl border border-slate-700">Gravity</button>
+                        <button onclick="selectTool('pulse')" id="tool-pulse" class="tool-btn px-3 py-2 rounded-2xl border border-slate-700">Pulse</button>
+                        <button onclick="selectTool('vortex')" id="tool-vortex" class="tool-btn px-3 py-2 rounded-2xl border border-slate-700">Vortex</button>
+                        <button onclick="selectTool('attractor')" id="tool-attractor" class="tool-btn px-3 py-2 rounded-2xl border border-slate-700">Attractor</button>
+                        <button onclick="selectTool('repulsor')" id="tool-repulsor" class="tool-btn px-3 py-2 rounded-2xl border border-slate-700">Repulsor</button>
+                        <button onclick="selectTool('portal')" id="tool-portal" class="tool-btn px-3 py-2 rounded-2xl border border-slate-700">Portal</button>
+                        <button onclick="selectTool('wind')" id="tool-wind" class="tool-btn px-3 py-2 rounded-2xl border border-slate-700">Wind Tunnel</button>
+                        <button onclick="selectTool('bounce')" id="tool-bounce" class="tool-btn px-3 py-2 rounded-2xl border border-slate-700">Bouncy</button>
+                        <button onclick="selectTool('boost')" id="tool-boost" class="tool-btn px-3 py-2 rounded-2xl border border-slate-700">Speed Boost</button>
+                        <button onclick="selectTool('friction')" id="tool-friction" class="tool-btn px-3 py-2 rounded-2xl border border-slate-700">Friction</button>
+                        <button onclick="selectTool('dot')" id="tool-dot" class="tool-btn px-3 py-2 rounded-2xl border border-slate-700">Damage Over Time</button>
+                    </div>
+                    <div class="mt-3 flex gap-2">
+                        <button onclick="selectTool('erase')" class="flex-1 px-3 py-2 rounded-2xl border border-slate-700 text-sm hover:bg-slate-800">Erase</button>
+                        <button onclick="randomizeObstacles()" class="flex-1 px-3 py-2 rounded-2xl border border-slate-700 text-sm hover:bg-slate-800">Random</button>
+                    </div>
+                </div>
+
+                <!-- Inspector -->
+                <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 inspector-panel">
+                    <div class="font-semibold mb-3 flex items-center justify-between">
+                        <span>Inspector</span>
+                        <span id="inspector-title" class="text-xs text-emerald-400 font-mono"></span>
+                    </div>
+                    <div id="inspector-content" class="text-sm">
+                        <p class="text-slate-400">Click on any placed effect to customize it.</p>
+                    </div>
+                </div>
+
+                <!-- Simulation Settings -->
+                <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5">
+                    <div class="font-semibold mb-4">Simulation</div>
+                    <div class="space-y-4 text-sm">
+                        <div>
+                            <div class="flex justify-between mb-1">
+                                <span>Agents</span>
+                                <span id="agent-count" class="font-mono">900</span>
+                            </div>
+                            <input type="range" id="agent-slider" class="w-full accent-emerald-500" min="100" max="2000" step="50" value="900">
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-1">
+                                <span>Speed</span>
+                                <span id="speed-val" class="font-mono">1.0×</span>
+                            </div>
+                            <input type="range" id="speed-slider" class="w-full accent-emerald-500" min="0.2" max="3" step="0.1" value="1">
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-1">
+                                <span>Flow Strength</span>
+                                <span id="flow-val" class="font-mono">1.0</span>
+                            </div>
+                            <input type="range" id="flow-slider" class="w-full accent-emerald-500" min="0.3" max="2.5" step="0.1" value="1">
+                        </div>
+                        <div class="pt-2 border-t border-slate-800 flex justify-between items-center">
+                            <span>Show Flow Vectors</span>
+                            <input type="checkbox" id="show-flow" checked class="accent-emerald-500">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        const COLS = 80;
+        const ROWS = 50;
+        const CELL_SIZE = 12;
+
+        let tiles = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+        let integrationField = Array.from({ length: ROWS }, () => Array(COLS).fill(Infinity));
+        let flowField = Array.from({ length: ROWS }, () => Array(COLS).fill({ x: 0, y: 0 }));
+
+        let agents = [];
+        let goal = { x: 65, y: 28 };
+        let portals = [];
+
+        let currentTool = 'wall';
+        let brushSize = 2;
+        let isPainting = false;
+        let selectedTile = null;
+        let isPaused = false;
+        let lastTime = performance.now();
+
+        let speedMultiplier = 1.0;
+        let flowInfluence = 1.0;
+        let showFlow = true;
+
+        class Agent {
+            constructor() {
+                this.reset();
+                this.color = `hsl(${175 + Math.random() * 45}, 75%, 68%)`;
+            }
+            reset() {
+                this.x = Math.random() * COLS * CELL_SIZE * 0.65;
+                this.y = Math.random() * ROWS * CELL_SIZE;
+                this.vx = 0; this.vy = 0;
+                this.radius = 3.3;
+            }
+            update(delta) {
+                const cx = Math.max(0, Math.min(COLS-1, Math.floor(this.x / CELL_SIZE)));
+                const cy = Math.max(0, Math.min(ROWS-1, Math.floor(this.y / CELL_SIZE)));
+                const tile = tiles[cy][cx];
+
+                let ax = flowField[cy][cx].x * 95 * flowInfluence;
+                let ay = flowField[cy][cx].y * 95 * flowInfluence;
+
+                if (tile && tile.type) {
+                    const tcx = cx * CELL_SIZE + CELL_SIZE / 2;
+                    const tcy = cy * CELL_SIZE + CELL_SIZE / 2;
+                    const dx = tcx - this.x;
+                    const dy = tcy - this.y;
+                    const dist = Math.hypot(dx, dy) || 1;
+
+                    switch (tile.type) {
+                        case 'gravity':
+                            ax += (dx / dist) * (tile.strength || 2.0) * 120;
+                            ay += (dy / dist) * (tile.strength || 2.0) * 120;
+                            break;
+                        case 'pulse':
+                            tile.timer = (tile.timer || 0) + delta;
+                            if (tile.timer > (tile.interval || 1.0)) {
+                                tile.timer = 0;
+                                const p = tile.strength || 95;
+                                this.vx -= (dx / dist) * p * 1.4;
+                                this.vy -= (dy / dist) * p * 1.4;
+                            }
+                            break;
+                        case 'vortex':
+                            const vs = tile.strength || 70;
+                            ax += (-dy / dist) * vs;
+                            ay += (dx / dist) * vs;
+                            break;
+                        case 'attractor':
+                            ax += (dx / dist) * (tile.strength || 2.2) * 115;
+                            ay += (dy / dist) * (tile.strength || 2.2) * 115;
+                            break;
+                        case 'repulsor':
+                            ax -= (dx / dist) * (tile.strength || 2.2) * 115;
+                            ay -= (dy / dist) * (tile.strength || 2.2) * 115;
+                            break;
+                        case 'slow':
+                            this.vx *= 0.6; this.vy *= 0.6;
+                            break;
+                        case 'kill':
+                        case 'dot':
+                            if (Math.random() < 0.12) this.reset();
+                            break;
+                        case 'portal':
+                            if (tile.linkedTo) {
+                                const l = tile.linkedTo;
+                                this.x = l.x * CELL_SIZE + CELL_SIZE/2 + (Math.random()-0.5)*12;
+                                this.y = l.y * CELL_SIZE + CELL_SIZE/2 + (Math.random()-0.5)*12;
+                                this.vx *= 0.25; this.vy *= 0.25;
+                            }
+                            break;
+                        case 'wind':
+                            ax += (tile.dirX || 1) * (tile.strength || 1.5) * 70;
+                            ay += (tile.dirY || 0) * (tile.strength || 1.5) * 70;
+                            break;
+                        case 'bounce':
+                            if (dist < 18) {
+                                this.vx = -this.vx * 0.9;
+                                this.vy = -this.vy * 0.9;
+                            }
+                            break;
+                        case 'boost':
+                            ax += (tile.dirX || 1) * (tile.strength || 2.0) * 90;
+                            ay += (tile.dirY || 0) * (tile.strength || 2.0) * 90;
+                            break;
+                        case 'friction':
+                            this.vx *= 0.5;
+                            this.vy *= 0.5;
+                            break;
+                    }
+                }
+
+                this.vx = this.vx * 0.82 + ax * 0.18;
+                this.vy = this.vy * 0.82 + ay * 0.18;
+
+                this.x += this.vx * delta * speedMultiplier;
+                this.y += this.vy * delta * speedMultiplier;
+
+                this.x = Math.max(5, Math.min(COLS * CELL_SIZE - 5, this.x));
+                this.y = Math.max(5, Math.min(ROWS * CELL_SIZE - 5, this.y));
+            }
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function initAgents(count) {
+            agents = [];
+            for (let i = 0; i < count; i++) agents.push(new Agent());
+            document.getElementById('agent-count').textContent = count;
+        }
+
+        function selectTool(tool) {
+            currentTool = tool;
+            document.getElementById('current-tool').textContent = tool.charAt(0).toUpperCase() + tool.slice(1);
+            document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+            const btn = document.getElementById('tool-' + tool);
+            if (btn) btn.classList.add('active');
+            selectedTile = null;
+            updateInspector();
+        }
+
+        function paint(x, y) {
+            if (x < 0 || x >= COLS || y < 0 || y >= ROWS) return;
+
+            for (let dy = -brushSize + 1; dy < brushSize; dy++) {
+                for (let dx = -brushSize + 1; dx < brushSize; dx++) {
+                    const nx = x + dx, ny = y + dy;
+                    if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS) continue;
+
+                    if (currentTool === 'erase') {
+                        tiles[ny][nx] = null;
+                    } else if (currentTool === 'wall') {
+                        tiles[ny][nx] = { type: 'wall' };
+                    } else if (currentTool === 'gravity') {
+                        tiles[ny][nx] = { type: 'gravity', strength: 2.0 };
+                    } else if (currentTool === 'pulse') {
+                        tiles[ny][nx] = { type: 'pulse', strength: 95, interval: 1.0, timer: 0 };
+                    } else if (currentTool === 'vortex') {
+                        tiles[ny][nx] = { type: 'vortex', strength: 70 };
+                    } else if (currentTool === 'attractor') {
+                        tiles[ny][nx] = { type: 'attractor', strength: 2.2 };
+                    } else if (currentTool === 'repulsor') {
+                        tiles[ny][nx] = { type: 'repulsor', strength: 2.2 };
+                    } else if (currentTool === 'slow') {
+                        tiles[ny][nx] = { type: 'slow' };
+                    } else if (currentTool === 'kill') {
+                        tiles[ny][nx] = { type: 'kill' };
+                    } else if (currentTool === 'dot') {
+                        tiles[ny][nx] = { type: 'dot' };
+                    } else if (currentTool === 'portal') {
+                        const p = { type: 'portal', linkedTo: null };
+                        tiles[ny][nx] = p;
+                        portals.push({ x: nx, y: ny, tile: p });
+                        if (portals.length >= 2) {
+                            const a = portals[portals.length-2];
+                            const b = portals[portals.length-1];
+                            a.tile.linkedTo = { x: b.x, y: b.y };
+                            b.tile.linkedTo = { x: a.x, y: a.y };
+                            portals = [];
+                        }
+                    } else if (currentTool === 'wind') {
+                        tiles[ny][nx] = { type: 'wind', strength: 1.8, dirX: 1, dirY: 0 };
+                    } else if (currentTool === 'bounce') {
+                        tiles[ny][nx] = { type: 'bounce' };
+                    } else if (currentTool === 'boost') {
+                        tiles[ny][nx] = { type: 'boost', strength: 2.2, dirX: 1, dirY: 0 };
+                    } else if (currentTool === 'friction') {
+                        tiles[ny][nx] = { type: 'friction' };
+                    }
+                }
+            }
+            generateField();
+        }
+
+        function generateField() {
+            for (let y = 0; y < ROWS; y++)
+                for (let x = 0; x < COLS; x++)
+                    integrationField[y][x] = Infinity;
+
+            const queue = [];
+            integrationField[goal.y][goal.x] = 0;
+            queue.push({ x: goal.x, y: goal.y });
+
+            const dirs = [[0,-1],[1,0],[0,1],[-1,0]];
+
+            while (queue.length > 0) {
+                const cur = queue.shift();
+                const cost = integrationField[cur.y][cur.x];
+
+                for (const [dx, dy] of dirs) {
+                    const nx = cur.x + dx, ny = cur.y + dy;
+                    if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS) continue;
+                    if (tiles[ny][nx] && tiles[ny][nx].type === 'wall') continue;
+
+                    let mCost = 1;
+                    const t = tiles[ny][nx];
+                    if (t && (t.type === 'slow' || t.type === 'friction')) mCost = 2.8;
+
+                    const newCost = cost + mCost;
+                    if (newCost < integrationField[ny][nx]) {
+                        integrationField[ny][nx] = newCost;
+                        queue.push({ x: nx, y: ny });
+                    }
+                }
+            }
+
+            for (let y = 0; y < ROWS; y++) {
+                for (let x = 0; x < COLS; x++) {
+                    if ((tiles[y][x] && tiles[y][x].type === 'wall') || (x === goal.x && y === goal.y)) {
+                        flowField[y][x] = { x: 0, y: 0 }; continue;
+                    }
+                    let best = integrationField[y][x];
+                    let bd = { x: 0, y: 0 };
+                    for (const [dx, dy] of dirs) {
+                        const nx = x + dx, ny = y + dy;
+                        if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS) continue;
+                        if (tiles[ny][nx] && tiles[ny][nx].type === 'wall') continue;
+                        if (integrationField[ny][nx] < best) {
+                            best = integrationField[ny][nx];
+                            bd = { x: dx, y: dy };
+                        }
+                    }
+                    const len = Math.hypot(bd.x, bd.y) || 1;
+                    flowField[y][x] = { x: bd.x / len, y: bd.y / len };
+                }
+            }
+        }
+
+        function draw() {
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.strokeStyle = '#1e2937'; ctx.lineWidth = 1;
+            for (let x = 0; x <= COLS; x++) { ctx.beginPath(); ctx.moveTo(x*CELL_SIZE, 0); ctx.lineTo(x*CELL_SIZE, ROWS*CELL_SIZE); ctx.stroke(); }
+            for (let y = 0; y <= ROWS; y++) { ctx.beginPath(); ctx.moveTo(0, y*CELL_SIZE); ctx.lineTo(COLS*CELL_SIZE, y*CELL_SIZE); ctx.stroke(); }
+
+            for (let y = 0; y < ROWS; y++) {
+                for (let x = 0; x < COLS; x++) {
+                    const t = tiles[y][x];
+                    if (!t) continue;
+                    const px = x * CELL_SIZE, py = y * CELL_SIZE;
+
+                    if (t.type === 'wall') ctx.fillStyle = '#f87171';
+                    else if (t.type === 'gravity') ctx.fillStyle = '#34d399';
+                    else if (t.type === 'pulse') ctx.fillStyle = '#fbbf24';
+                    else if (t.type === 'vortex') ctx.fillStyle = '#a78bfa';
+                    else if (t.type === 'attractor') ctx.fillStyle = '#60a5fa';
+                    else if (t.type === 'repulsor') ctx.fillStyle = '#f472b6';
+                    else if (t.type === 'slow' || t.type === 'friction') ctx.fillStyle = '#67e8f9';
+                    else if (t.type === 'kill' || t.type === 'dot') ctx.fillStyle = '#ef4444';
+                    else if (t.type === 'portal') ctx.fillStyle = '#c026ff';
+                    else if (t.type === 'wind') ctx.fillStyle = '#38bdf8';
+                    else if (t.type === 'bounce') ctx.fillStyle = '#fb923c';
+                    else if (t.type === 'boost') ctx.fillStyle = '#4ade80';
+                    else ctx.fillStyle = '#64748b';
+
+                    ctx.fillRect(px, py, CELL_SIZE, CELL_SIZE);
+                }
+            }
+
+            if (showFlow) {
+                ctx.strokeStyle = '#64748b'; ctx.lineWidth = 1;
+                for (let y = 0; y < ROWS; y += 2) for (let x = 0; x < COLS; x += 2) {
+                    if (tiles[y][x] && tiles[y][x].type === 'wall') continue;
+                    const f = flowField[y][x];
+                    const cx = x*CELL_SIZE + CELL_SIZE/2, cy = y*CELL_SIZE + CELL_SIZE/2;
+                    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + f.x*7, cy + f.y*7); ctx.stroke();
+                }
+            }
+
+            ctx.fillStyle = '#4ade80';
+            ctx.beginPath();
+            ctx.arc(goal.x * CELL_SIZE + CELL_SIZE/2, goal.y * CELL_SIZE + CELL_SIZE/2, 8, 0, Math.PI*2);
+            ctx.fill();
+
+            for (const a of agents) a.draw();
+
+            if (selectedTile) {
+                ctx.strokeStyle = '#4ade80';
+                ctx.lineWidth = 2.5;
+                ctx.strokeRect(selectedTile.x * CELL_SIZE, selectedTile.y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+            }
+        }
+
+        function update(delta) {
+            for (const a of agents) a.update(delta);
+        }
+
+        function loop() {
+            const now = performance.now();
+            const delta = Math.min((now - lastTime) / 1000, 0.1);
+            lastTime = now;
+            if (!isPaused) update(delta);
+            draw();
+            requestAnimationFrame(loop);
+        }
+
+        function updateInspector() {
+            const container = document.getElementById('inspector-content');
+            const title = document.getElementById('inspector-title');
+
+            if (!selectedTile || !selectedTile.tile) {
+                container.innerHTML = `<p class="text-sm text-slate-400">Click on any placed effect to customize it.</p>`;
+                title.textContent = '';
+                return;
+            }
+
+            const t = selectedTile.tile;
+            title.textContent = t.type.toUpperCase();
+
+            let html = `<div class="mb-3 text-xs text-emerald-400">Position: (${selectedTile.x}, ${selectedTile.y})</div>`;
+
+            // Dynamic properties
+            if (t.strength !== undefined) {
+                html += `<div class="mb-2"><label class="text-xs block mb-1">Strength</label>
+                    <input type="range" class="w-full accent-emerald-500" min="0.5" max="4" step="0.1" value="${t.strength}"
+                    oninput="updateSelectedProperty('strength', parseFloat(this.value))"></div>`;
+            }
+            if (t.interval !== undefined) {
+                html += `<div class="mb-2"><label class="text-xs block mb-1">Interval</label>
+                    <input type="range" class="w-full accent-emerald-500" min="0.3" max="3" step="0.1" value="${t.interval}"
+                    oninput="updateSelectedProperty('interval', parseFloat(this.value))"></div>`;
+            }
+            if (t.dirX !== undefined) {
+                html += `<div class="mb-2"><label class="text-xs block mb-1">Direction X</label>
+                    <input type="range" class="w-full accent-emerald-500" min="-2" max="2" step="0.1" value="${t.dirX}"
+                    oninput="updateSelectedProperty('dirX', parseFloat(this.value))"></div>`;
+                html += `<div class="mb-2"><label class="text-xs block mb-1">Direction Y</label>
+                    <input type="range" class="w-full accent-emerald-500" min="-2" max="2" step="0.1" value="${t.dirY}"
+                    oninput="updateSelectedProperty('dirY', parseFloat(this.value))"></div>`;
+            }
+
+            html += `<button onclick="deleteSelectedTile()" class="mt-4 w-full text-xs py-1.5 rounded-xl bg-red-900/70 hover:bg-red-900 border border-red-800">Delete This Tile</button>`;
+            container.innerHTML = html;
+        }
+
+        function updateSelectedProperty(key, value) {
+            if (!selectedTile || !selectedTile.tile) return;
+            selectedTile.tile[key] = value;
+            generateField();
+        }
+
+        function deleteSelectedTile() {
+            if (!selectedTile) return;
+            tiles[selectedTile.y][selectedTile.x] = null;
+            selectedTile = null;
+            updateInspector();
+            generateField();
+        }
+
+        function setupListeners() {
+            canvas.addEventListener('mousedown', e => {
+                isPainting = true;
+                const rect = canvas.getBoundingClientRect();
+                const cx = Math.floor((e.clientX - rect.left) / CELL_SIZE);
+                const cy = Math.floor((e.clientY - rect.top) / CELL_SIZE);
+
+                if (e.button === 2) {
+                    goal.x = cx; goal.y = cy;
+                    generateField();
+                    return;
+                }
+
+                const clicked = tiles[cy][cx];
+                if (clicked && clicked.type) {
+                    selectedTile = { x: cx, y: cy, tile: clicked };
+                    updateInspector();
+                    return;
+                }
+                paint(cx, cy);
+            });
+
+            canvas.addEventListener('mousemove', e => {
+                if (!isPainting) return;
+                const rect = canvas.getBoundingClientRect();
+                const cx = Math.floor((e.clientX - rect.left) / CELL_SIZE);
+                const cy = Math.floor((e.clientY - rect.top) / CELL_SIZE);
+                paint(cx, cy);
+            });
+            window.addEventListener('mouseup', () => isPainting = false);
+            canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+            const agentSlider = document.getElementById('agent-slider');
+            agentSlider.addEventListener('input', () => {
+                const v = parseInt(agentSlider.value);
+                document.getElementById('agent-count').textContent = v;
+                initAgents(v);
+            });
+
+            document.getElementById('speed-slider').addEventListener('input', e => {
+                speedMultiplier = parseFloat(e.target.value);
+                document.getElementById('speed-val').textContent = speedMultiplier.toFixed(1) + '×';
+            });
+
+            document.getElementById('flow-slider').addEventListener('input', e => {
+                flowInfluence = parseFloat(e.target.value);
+                document.getElementById('flow-val').textContent = flowInfluence.toFixed(1);
+            });
+
+            document.getElementById('brush-slider').addEventListener('input', e => {
+                brushSize = parseInt(e.target.value);
+                document.getElementById('brush-value').textContent = brushSize;
+            });
+
+            document.getElementById('show-flow').addEventListener('change', e => showFlow = e.target.checked);
+
+            document.addEventListener('keydown', e => {
+                if (e.key === ' ') { e.preventDefault(); isPaused = !isPaused; }
+            });
+        }
+
+        function clearAll() {
+            tiles = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+            portals = [];
+            selectedTile = null;
+            updateInspector();
+            generateField();
+        }
+
+        function randomizeObstacles() {
+            for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+                tiles[y][x] = Math.random() < 0.1 ? { type: 'wall' } : null;
+            }
+            generateField();
+        }
+
+        function init() {
+            for (let i = 0; i < 20; i++) {
+                const x = Math.floor(Math.random() * COLS);
+                const y = Math.floor(Math.random() * ROWS);
+                tiles[y][x] = { type: 'wall' };
+            }
+            initAgents(900);
+            generateField();
+            setupListeners();
+            selectTool('wall');
+            document.getElementById('brush-value').textContent = brushSize;
+            loop();
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

@@ -62,14 +62,18 @@ export class FlowField {
         }
 
         const nextIndex = this.map.getIndex(nextColumn, nextRow);
-        const terrainCost = this.map.costs[nextIndex];
-        if (terrainCost === TERRAIN_WALL || !this.canMoveDiagonally(column, row, direction.x, direction.y)) {
+        if (
+          this.map.costs[nextIndex] === TERRAIN_WALL ||
+          !this.canMoveDiagonally(column, row, direction.x, direction.y)
+        ) {
           continue;
         }
 
-        // Integration lives in Float32Array, so round the queued priority to the exact stored representation.
-        // Without this, diagonal costs can look stale when their JavaScript double is compared with the float value.
-        const nextCost = Math.fround(entry.priority + terrainCost * direction.distance);
+        // The search runs backward from the goal. A forward edge from nextIndex into entry.node
+        // pays the terrain cost of entry.node, so the reverse expansion must charge that same
+        // destination-cell cost. Charging nextIndex here makes rough-terrain routes disagree with A*.
+        const edgeCost = this.map.costs[entry.node] * direction.distance;
+        const nextCost = Math.fround(entry.priority + edgeCost);
         if (nextCost < this.integration[nextIndex]) {
           this.integration[nextIndex] = nextCost;
           this.frontier.push(nextIndex, nextCost);
@@ -90,7 +94,7 @@ export class FlowField {
 
       const column = this.map.getColumn(index);
       const row = this.map.getRow(index);
-      let bestCost = this.integration[index];
+      let bestCost = Number.POSITIVE_INFINITY;
       let bestX = 0;
       let bestY = 0;
 
@@ -105,8 +109,10 @@ export class FlowField {
         }
 
         const nextIndex = this.map.getIndex(nextColumn, nextRow);
-        if (this.integration[nextIndex] < bestCost) {
-          bestCost = this.integration[nextIndex];
+        const candidateCost =
+          this.integration[nextIndex] + this.map.costs[nextIndex] * direction.distance;
+        if (candidateCost < bestCost) {
+          bestCost = candidateCost;
           bestX = direction.x;
           bestY = direction.y;
         }

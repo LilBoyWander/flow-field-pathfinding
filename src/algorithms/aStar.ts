@@ -4,6 +4,7 @@ import { GridMap, TERRAIN_WALL } from '../simulation/gridMap';
 export interface AStarResult {
   path: Int32Array;
   expandedNodes: number;
+  cost: number;
 }
 
 const DIRECTIONS = [
@@ -39,7 +40,7 @@ export class AStarPlanner {
 
   findPath(startIndex: number, goalIndex: number): AStarResult {
     if (!this.map.isWalkableIndex(startIndex) || !this.map.isWalkableIndex(goalIndex)) {
-      return { path: new Int32Array(), expandedNodes: 0 };
+      return { path: new Int32Array(), expandedNodes: 0, cost: Number.POSITIVE_INFINITY };
     }
 
     this.gScore.fill(Number.POSITIVE_INFINITY);
@@ -58,9 +59,12 @@ export class AStarPlanner {
       }
 
       if (entry.node === goalIndex) {
+        // gScore is the comparable contract value. Path reconstruction is useful for agents,
+        // but the audit compares this accumulated terrain cost with flow integration.
         return {
           path: this.reconstructPath(startIndex, goalIndex),
           expandedNodes,
+          cost: this.gScore[goalIndex],
         };
       }
 
@@ -95,7 +99,7 @@ export class AStarPlanner {
       }
     }
 
-    return { path: new Int32Array(), expandedNodes };
+    return { path: new Int32Array(), expandedNodes, cost: Number.POSITIVE_INFINITY };
   }
 
   private reconstructPath(startIndex: number, goalIndex: number): Int32Array {
@@ -118,6 +122,8 @@ export class AStarPlanner {
     const deltaX = Math.abs(this.map.getColumn(index) - this.map.getColumn(goalIndex));
     const deltaY = Math.abs(this.map.getRow(index) - this.map.getRow(goalIndex));
     const diagonal = Math.min(deltaX, deltaY);
+    // Octile distance assumes the cheapest terrain cost (one), so it remains admissible when
+    // rough cells cost more and A* returns the same optimum encoded by the flow field.
     return deltaX + deltaY + (Math.SQRT2 - 2) * diagonal;
   }
 

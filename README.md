@@ -27,6 +27,14 @@ Independent A* is a strong general-purpose path search, but a crowd can repeat m
 
 This repository makes that tradeoff visible. It is designed for RTS, crowd, and simulation-engine scenarios where many agents need coherent global guidance.
 
+The interactive page teaches the decision through:
+
+- workload experiments for a shared army, a small squad, split destination groups, and weighted terrain
+- a live **agents per field** signal, which exposes the reuse that actually makes flow fields valuable
+- real multi-destination comparisons that build one flow field per goal group
+- a path-cost audit proving that flow integration and independent A* agree before timing is compared
+- measured scaling checkpoints from one route through the current crowd
+
 ## Scenario Profile
 
 | Setting | Default |
@@ -58,6 +66,7 @@ Open the local URL printed by Vite.
 | --- | --- |
 | `npm run dev` | Start the Vite development server |
 | `npm run check` | Type-check without emitting files |
+| `npm test` | Run path-cost, reachability, and interface regressions |
 | `npm run build` | Type-check and create a production build |
 | `npm run preview` | Preview the production build locally |
 
@@ -100,7 +109,7 @@ Reported planner times do not include:
 
 - crowd movement
 - Canvas rendering
-- local collision avoidance
+- local separation and congestion steering
 - network or server work
 
 > [!IMPORTANT]
@@ -115,6 +124,7 @@ Reported planner times do not include:
 | **Agent count** | Adjusts the crowd from `100` to `5,000` |
 | **Movement speed** | Changes simulation speed without affecting planner timing |
 | **Terrain scenario** | Loads a deterministic benchmark layout |
+| **Destination groups** | Controls how many real fields the benchmark must build |
 | **Goal tool** | Click to move the shared destination |
 | **Wall tool** | Paints blocked cells |
 | **Rough cost tool** | Paints traversable cells with a higher movement cost |
@@ -139,6 +149,9 @@ The application separates planning, simulation, and rendering:
 - routes built
 - unreachable cells or agents
 - agents that reached the destination
+- agents reusing each destination field
+- maximum flow/A* path-cost delta
+- measured planner scaling as route count grows
 
 Browser timing is useful for relative exploration, not a substitute for controlled native-engine profiling.
 
@@ -179,13 +192,15 @@ Browser timing is useful for relative exploration, not a substitute for controll
 - Both planners support weighted terrain and diagonal movement.
 - Diagonal corner-cutting through blocked cells is rejected.
 - A* reuses its heap and score buffers between searches.
+- Reverse Dijkstra charges the same destination-cell edge cost as forward A*, including weighted and diagonal terrain.
 - Presets use deterministic generation for repeatable workloads.
 - Canvas pointer coordinates are converted back into logical grid space.
+- A dynamic occupancy grid adds local separation without rebuilding the static terrain/goal field.
 - The original prototype is retained as implementation history, not used by the production app.
 
 ## Deliberate Limitations
 
-- Agents do not perform local collision avoidance.
+- Local avoidance is intentionally lightweight steering rather than a full reciprocal-velocity-obstacle solver.
 - All agents share one global terrain-cost model.
 - Dynamic edits rebuild the entire field rather than incrementally repairing it.
 - Canvas 2D keeps the rendering code approachable; very large production crowds may require GPU instancing.
